@@ -37,13 +37,41 @@
 #include <iostream>
 #include <iterator>
 
-#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID)
+#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID) && !defined(_WINDOWS) && !defined(_WIN32) && !defined(WIN32)
 #include <wordexp.h>
 #endif
 
 namespace g2o {
 
 using namespace std;
+
+static int g2oVasprintf(char** strp, const char* fmt, va_list ap)
+{
+#if defined(_MSC_VER)
+  va_list ap_len;
+  va_copy(ap_len, ap);
+  const int len = _vscprintf(fmt, ap_len);
+  va_end(ap_len);
+  if (len < 0)
+    return -1;
+
+  *strp = static_cast<char*>(malloc(static_cast<size_t>(len) + 1));
+  if (*strp == NULL)
+    return -1;
+
+  va_list ap_write;
+  va_copy(ap_write, ap);
+  const int written = vsnprintf(*strp, static_cast<size_t>(len) + 1, fmt, ap_write);
+  va_end(ap_write);
+  if (written < 0) {
+    free(*strp);
+    *strp = NULL;
+  }
+  return written;
+#else
+  return vasprintf(strp, fmt, ap);
+#endif
+}
 
 std::string trim(const std::string& s)
 {
@@ -97,7 +125,7 @@ std::string formatString(const char* fmt, ...)
   char* auxPtr = NULL;
   va_list arg_list;
   va_start(arg_list, fmt);
-  int numChar = vasprintf(&auxPtr, fmt, arg_list);
+  int numChar = g2oVasprintf(&auxPtr, fmt, arg_list);
   va_end(arg_list);
   string retString;
   if (numChar != -1)
@@ -114,7 +142,7 @@ int strPrintf(std::string& str, const char* fmt, ...)
   char* auxPtr = NULL;
   va_list arg_list;
   va_start(arg_list, fmt);
-  int numChars = vasprintf(&auxPtr, fmt, arg_list);
+  int numChars = g2oVasprintf(&auxPtr, fmt, arg_list);
   va_end(arg_list);
   str = auxPtr;
   free(auxPtr);
@@ -123,7 +151,7 @@ int strPrintf(std::string& str, const char* fmt, ...)
 
 std::string strExpandFilename(const std::string& filename)
 {
-#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID)
+#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID) && !defined(_WINDOWS) && !defined(_WIN32) && !defined(WIN32)
   string result = filename;
   wordexp_t p;
 
@@ -134,9 +162,7 @@ std::string strExpandFilename(const std::string& filename)
   wordfree(&p);
   return result;
 #else
-  (void) filename;
-  std::cerr << "WARNING: " << __PRETTY_FUNCTION__ << " not implemented" << std::endl;
-  return std::string();
+  return filename;
 #endif
 }
 

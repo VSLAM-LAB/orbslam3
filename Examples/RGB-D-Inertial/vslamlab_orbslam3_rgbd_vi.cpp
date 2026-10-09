@@ -2,13 +2,11 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
+#include<thread>
 #include <ctime>
 #include <sstream>
 #include<opencv2/core/core.hpp>
 #include <yaml-cpp/yaml.h>
-
-#include "sys/types.h"
-#include "sys/sysinfo.h"
 
 #include<System.h>
 #include "ImuTypes.h"
@@ -33,7 +31,6 @@ void removeSubstring(std::string& str, const std::string& substring) {
 
 void LoadIMU(const string &strImuPath, vector<double> &vTimeStamps, vector<cv::Point3f> &vAcc, vector<cv::Point3f> &vGyro);
 
-
 int main(int argc, char *argv[])
 {
 
@@ -49,6 +46,12 @@ int main(int argc, char *argv[])
     bool verbose{true};
 
     string vocabulary{"Vocabulary/ORBvoc.txt"};
+    if (argc > 1 && std::string(argv[1]) == "--help") {
+        cout << "Usage: vslamlab_orbslam3_rgbd_vi sequence_path:<dir> calibration_yaml:<file> rgb_csv:<file> exp_folder:<dir>"
+             << " [exp_id:<n>] [settings_yaml:<file>] [verbose:<0|1>] [vocabulary:<ORBvoc.txt>]" << endl;
+        return 0;
+    }
+
     cout << endl;
     for (int i = 0; i < argc; ++i) {
         std::string arg = argv[i];
@@ -147,55 +150,70 @@ int main(int argc, char *argv[])
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM3::System SLAM(vocabulary,calibration_yaml,settings_yaml,ORB_SLAM3::System::IMU_RGBD, verbose);
 
-    // Main loop
-    cv::Mat im, imD;
-    vector<ORB_SLAM3::IMU::Point> vImuMeas;
-    // proccIm = 0;
-    for(int ni = 0; ni < nImages; ni++)
-    {
-        // Read image from file
-        im = cv::imread(imageFilenames[ni], cv::IMREAD_UNCHANGED);
-        imD = cv::imread(depthFilenames[ni], cv::IMREAD_UNCHANGED);
-        ORB_SLAM3::Seconds tframe = timestamps[ni];
+    auto processSequence = [&]() {
 
-        // Load imu measurements from previous frame
-        vImuMeas.clear();
-        if(ni>0){
-            while(timestampsImu[first_imu]<=timestamps[ni]){
-                vImuMeas.push_back(ORB_SLAM3::IMU::Point(vAcc[first_imu].x,vAcc[first_imu].y,vAcc[first_imu].z,
-                                        vGyro[first_imu].x,vGyro[first_imu].y,vGyro[first_imu].z,
-                                        timestampsImu[first_imu]));
-                first_imu++;
+        // Main loop
+        cv::Mat im, imD;
+        vector<ORB_SLAM3::IMU::Point> vImuMeas;
+        // proccIm = 0;
+        for(int ni = 0; ni < nImages; ni++)
+        {
+            // Read image from file
+            im = cv::imread(imageFilenames[ni], cv::IMREAD_UNCHANGED);
+            imD = cv::imread(depthFilenames[ni], cv::IMREAD_UNCHANGED);
+            ORB_SLAM3::Seconds tframe = timestamps[ni];
+
+            // Load imu measurements from previous frame
+            vImuMeas.clear();
+            if(ni>0){
+                while(timestampsImu[first_imu]<=timestamps[ni]){
+                    vImuMeas.push_back(ORB_SLAM3::IMU::Point(vAcc[first_imu].x,vAcc[first_imu].y,vAcc[first_imu].z,
+                                            vGyro[first_imu].x,vGyro[first_imu].y,vGyro[first_imu].z,
+                                            timestampsImu[first_imu]));
+                    first_imu++;
+                }
             }
+
+            // Pass the image to the SLAM system
+            std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+            if (vImuMeas.size() > 1)
+                SLAM.TrackRGBD(im, imD, tframe, vImuMeas);
+
+            std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+
+            ORB_SLAM3::Seconds ttrack = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+            vTimesTrack[ni] = ttrack;
+
+            // Wait to load the next frame
+            ORB_SLAM3::Seconds T = 0.0;
+            if(ni < nImages-1)
+                T = timestamps[ni+1] - tframe;
+            else if(ni > 0)
+                T = tframe - timestamps[ni-1];
+
+            if(ttrack < T)
+                std::this_thread::sleep_for(std::chrono::duration<double>(T - ttrack));
         }
 
-        // Pass the image to the SLAM system
-        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-        if (vImuMeas.size() > 1)
-            SLAM.TrackRGBD(im, imD, tframe, vImuMeas);
+        // Stop all threads
+        SLAM.Shutdown();
 
-        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+        // Save camera trajectory
+        string resultsPath_expId = exp_folder + "/" + paddingZeros(exp_id);
+        SLAM.SaveKeyFrameTrajectoryVSLAMLAB(resultsPath_expId + "_" + "KeyFrameTrajectory.csv");
+    };
 
-        ORB_SLAM3::Seconds ttrack = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
-        vTimesTrack[ni] = ttrack;
-
-        // Wait to load the next frame
-        ORB_SLAM3::Seconds T = 0.0;
-        if(ni < nImages-1)
-            T = timestamps[ni+1] - tframe;
-        else if(ni > 0)
-            T = tframe - timestamps[ni-1];
-
-        if(ttrack < T)
-            usleep((T-ttrack)  * 1e6);
+    // macOS: the Pangolin viewer must run on the main thread, tracking then runs in a thread
+    if(SLAM.ViewerRunsOnMainThread())
+    {
+        std::thread trackingThread(processSequence);
+        SLAM.RunViewer();
+        trackingThread.join();
     }
-
-    // Stop all threads
-    SLAM.Shutdown();
-
-    // Save camera trajectory
-    string resultsPath_expId = exp_folder + "/" + paddingZeros(exp_id);
-    SLAM.SaveKeyFrameTrajectoryVSLAMLAB(resultsPath_expId + "_" + "KeyFrameTrajectory.csv");
+    else
+    {
+        processSequence();
+    }
 
     return 0;
 }

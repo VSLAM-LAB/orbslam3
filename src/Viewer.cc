@@ -18,6 +18,10 @@
 
 
 #include "Viewer.h"
+
+#include <chrono>
+#include <thread>
+
 #include <pangolin/pangolin.h>
 
 #include <mutex>
@@ -368,7 +372,7 @@ void Viewer::Run()
         {
             while(isStopped())
             {
-                usleep(3000);
+                std::this_thread::sleep_for(std::chrono::microseconds(3000));
             }
         }
 

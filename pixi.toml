@@ -1,0 +1,72 @@
+# Conda package definition for orbslam3 ([package], built by pixi-build from this repo for releases), plus a
+# development environment ([workspace]) that compiles this repo in place with `pixi run install`.
+# Releases are published by CI on vX.Y tags (linux-64, osx-arm64, win-64).
+[workspace]
+authors = ["vslamlab <vslamlab@gmail.com>"]
+channels = ["https://prefix.dev/conda-forge"]
+name = "orbslam3"
+platforms = ["linux-64", "osx-arm64", "win-64"]
+version = "0.1.0"
+preview = ["pixi-build"]
+
+########################################################################################################################
+# Package. Release: from a clean checkout of a tagged commit (CI does this, see .github/workflows/conda-package.yml)
+#   pixi publish --clean --target-dir output
+#   pixi upload prefix --channel vslamlab/vslamlab output/*.conda
+# Builds libORB_SLAM3 (DBoW2 and g2o linked in statically, Sophus header-only) and the
+# vslamlab_orbslam3_{mono,rgbd,stereo,mono_vi,rgbd_vi,stereo_vi} executables.
+# ORBvoc.txt is not packaged: VSLAM-LAB downloads it (huggingface.co/vslamlab/orbslam2_vocabulary).
+[package]
+name = "orbslam3"
+version = "1.0"
+description = "ORB-SLAM3: visual, visual-inertial and multi-map SLAM"
+authors = ["Carlos Campos", "Richard Elvira", "Juan J. Gomez Rodriguez", "J. M. M. Montiel", "Juan D. Tardos"]
+license = "GPL-3.0-only"
+license-file = "LICENSE"
+homepage = "https://github.com/UZ-SLAMLab/ORB_SLAM3"
+repository = "https://github.com/VSLAM-LAB/orbslam3"
+
+[package.build]
+backend = { name = "pixi-build-cmake", version = "0.*" }
+
+[package.build.config]
+# The heaviest translation units (Optimizer.cc) peak at ~4.5 GB of RAM each; the CI runners have 7-16 GB
+env = { CMAKE_BUILD_PARALLEL_LEVEL = "2" }
+
+[package.host-dependencies]
+libopencv = "<5"        # OpenCV 5 moved features2d out of the main modules
+eigen = "3.4.*"         # Eigen 5 breaks monocular tracking (constant "Fail to track local map")
+yaml-cpp = "*"
+pangolin-opengl = "*"
+libboost-devel = "*"    # boost::serialization (Atlas save/load)
+openssl = "*"           # MD5 of the vocabulary in saved atlases
+
+[package.host-dependencies."if(host_platform == 'linux-64')"]
+libgl-devel = "*"       # Pangolin's CMake config: find_package(OpenGL)
+libopengl-devel = "*"
+
+[package.run-dependencies]
+pangolin-opengl = "*"
+
+########################################################################################################################
+# Workspace: development environment. `pixi run install` compiles this repo in place (bin/, lib/) for the local CPU
+# (-march=native) against this environment and extracts the vocabulary; run it again after editing the sources.
+# The environment gets the [package] build/host/run dependencies through [dev] (orbslam3 itself is not built).
+[tasks]
+extract-vocabulary = { cmd = "cmake -E tar xf ORBvoc.txt.tar.gz", cwd = "Vocabulary", inputs = ["Vocabulary/ORBvoc.txt.tar.gz"], outputs = ["Vocabulary/ORBvoc.txt"] }
+# jobs: parallel compile jobs; the heaviest translation units (Optimizer.cc: Eigen, g2o) peak at ~4.5 GB of RAM each
+install = { cmd = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Release -DORBSLAM3_NATIVE=ON && cmake --build build --parallel {{ jobs }}", args = [{ arg = "jobs", default = "3" }], depends-on = ["extract-vocabulary"] }
+execute-mono = "./bin/vslamlab_orbslam3_mono"
+execute-rgbd = "./bin/vslamlab_orbslam3_rgbd"
+execute-stereo = "./bin/vslamlab_orbslam3_stereo"
+execute-mono-vi = "./bin/vslamlab_orbslam3_mono_vi"
+execute-rgbd-vi = "./bin/vslamlab_orbslam3_rgbd_vi"
+execute-stereo-vi = "./bin/vslamlab_orbslam3_stereo_vi"
+test = "./bin/vslamlab_orbslam3_mono --help && ./bin/vslamlab_orbslam3_rgbd --help && ./bin/vslamlab_orbslam3_stereo --help && ./bin/vslamlab_orbslam3_mono_vi --help && ./bin/vslamlab_orbslam3_rgbd_vi --help && ./bin/vslamlab_orbslam3_stereo_vi --help && echo OK"
+
+[dev]
+orbslam3 = { path = "." }  # installs the [package] build/host/run dependencies, not orbslam3 itself
+
+[dependencies]
+cmake = "*"
+ninja = "*"

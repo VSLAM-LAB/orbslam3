@@ -22,14 +22,9 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 # Interface library for common warnings
 add_library(g2o_warnings INTERFACE)
 target_compile_options(g2o_warnings INTERFACE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:
-    -Wall -Wextra -Wpedantic>
-    $<$<CXX_COMPILER_ID:MSVC>:
-    /W4>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
-
-# Optimization/Architecture flags
-set(G2O_OPTIMIZATION_FLAGS -O3 -march=native) 
 
 # Workaround for MSVC90
 if(MSVC90)
@@ -37,9 +32,12 @@ if(MSVC90)
   message(STATUS "Disabling memory alignment for MSVC8")
 endif()
 
-# Define UNIX macro explicitly
-add_definitions(-DUNIX)
-message(STATUS "Compiling on Unix")
+# Platform macro used by g2o/stuff
+if(WIN32)
+  add_definitions(-DWINDOWS)
+else()
+  add_definitions(-DUNIX)
+endif()
 
 # Configuration Header
 set(G2O_CXX_COMPILER "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER}")
@@ -70,7 +68,7 @@ set(G2O_SOURCE_FILES
         g2o/core/optimization_algorithm.cpp
         g2o/core/optimization_algorithm_with_hessian.cpp
         g2o/core/optimization_algorithm_levenberg.cpp
-        g2o/core/optimization_algorithm_gauss_newton.cpp 
+        g2o/core/optimization_algorithm_gauss_newton.cpp
         g2o/core/jacobian_workspace.cpp
         g2o/core/robust_kernel.cpp
         g2o/core/robust_kernel_factory.cpp
@@ -82,12 +80,12 @@ set(G2O_SOURCE_FILES
         g2o/stuff/property.cpp
 )
 
-# Create shared library
-add_library(${PROJECT_NAME} SHARED ${G2O_SOURCE_FILES})
+# Create static library (linked into libORB_SLAM3)
+add_library(${PROJECT_NAME} STATIC ${G2O_SOURCE_FILES})
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# Apply warnings and optimization flags
+# Apply warnings
 target_link_libraries(${PROJECT_NAME} PRIVATE g2o_warnings)
-target_compile_options(${PROJECT_NAME} PRIVATE ${G2O_OPTIMIZATION_FLAGS})
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -98,18 +96,20 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen)
 
-# Install targets and headers
-install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include)
+# Install targets and headers, only when built on its own (inside ORB-SLAM3 it is linked statically)
+if(PROJECT_IS_TOP_LEVEL)
+  install(TARGETS ${PROJECT_NAME}
+          LIBRARY DESTINATION lib
+          ARCHIVE DESTINATION lib
+          RUNTIME DESTINATION bin
+          INCLUDES DESTINATION include)
 
-# Install configuration header
-install(FILES ${PROJECT_SOURCE_DIR}/config.h DESTINATION include/g2o)
+  # Install configuration header
+  install(FILES ${PROJECT_SOURCE_DIR}/config.h DESTINATION include/g2o)
 
-# Install all other public headers
-install(DIRECTORY g2o/core g2o/types g2o/stuff
-        DESTINATION include/g2o
-        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
-)
+  # Install all other public headers
+  install(DIRECTORY g2o/core g2o/types g2o/stuff
+          DESTINATION include/g2o
+          FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+  )
+endif()

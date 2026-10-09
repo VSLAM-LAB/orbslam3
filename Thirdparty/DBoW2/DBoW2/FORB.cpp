@@ -13,7 +13,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
-#include <stdint-gcc.h>
+#include <cstdint>
 
 #include "FORB.h"
 
@@ -189,5 +189,4 @@ void FORB::toMat8U(const std::vector<TDescriptor> &descriptors,
 // --------------------------------------------------------------------------
 
 } // namespace DBoW2
-
 

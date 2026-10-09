@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(ORB_SLAM3 CXX)
 
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE Release)
-ENDIF()
-
 # Standard settings
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,34 +14,39 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall   -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-
 # Dependencies
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(Threads REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Boost REQUIRED COMPONENTS serialization)  # Atlas save/load
+find_package(OpenSSL REQUIRED)                         # MD5 checksum of the vocabulary in saved atlases
 
-# DBoW2 and g2o from Thirdparty folders
+# Optimization/Architecture flags (-O3 comes with the Release build type), for every target in the tree: Eigen picks
+# its memory alignment from the instruction set, so all objects of the process must be compiled with the same flags
+# (mixing them makes an object allocated with one alignment scheme be freed with the other). -march=native ties the
+# binaries to the build machine's CPU, so it is opt-in (local builds); MSVC needs /bigobj for the Eigen-heavy code
+option(ORBSLAM3_NATIVE "Optimize for the build machine's CPU (-march=native)" OFF)
+if(MSVC)
+    add_compile_options(/bigobj)
+elseif(ORBSLAM3_NATIVE)
+    add_compile_options(-march=native)
+endif()
+
+# DBoW2 and g2o from Thirdparty folders (Sophus is header-only)
 add_subdirectory(Thirdparty/DBoW2)
 add_subdirectory(Thirdparty/g2o)
 
 # Interface library for common warnings
 add_library(orbslam3_warnings INTERFACE)
 target_compile_options(orbslam3_warnings INTERFACE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:
-    -Wall -Wextra -Wpedantic>
-    $<$<CXX_COMPILER_ID:MSVC>:
-    /W4>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
 
-# Optimization/Architecture flags
-set(ORBSLAM3_OPTIMIZATION_FLAGS -O3 -march=native) 
-
-# Create shared library
+# Create shared library (MSVC: export all its symbols, the sources have no __declspec annotations)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 add_library(${PROJECT_NAME} SHARED
         src/System.cc
         src/Tracking.cc
@@ -77,9 +78,8 @@ add_library(${PROJECT_NAME} SHARED
         src/Settings.cc
 )
 
-# Apply warnings and optimization flags
+# Apply warnings
 target_link_libraries(${PROJECT_NAME} PRIVATE orbslam3_warnings)
-target_compile_options(${PROJECT_NAME} PRIVATE ${ORBSLAM3_OPTIMIZATION_FLAGS})
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -93,15 +93,16 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 # Link dependencies
-target_link_libraries(${PROJECT_NAME} 
+target_link_libraries(${PROJECT_NAME}
     PUBLIC ${OpenCV_LIBS}
     PUBLIC Eigen3::Eigen
     PUBLIC yaml-cpp::yaml-cpp
     ${Pangolin_LIBRARIES}
     PUBLIC DBoW2
     PUBLIC g2o
-    -lboost_serialization
-    -lcrypto
+    PUBLIC Boost::serialization
+    PUBLIC OpenSSL::Crypto
+    PUBLIC Threads::Threads
 )
 
 # Example executables
@@ -123,35 +124,11 @@ target_link_libraries(vslamlab_orbslam3_stereo_vi PRIVATE ${PROJECT_NAME})
 add_executable(vslamlab_orbslam3_rgbd_vi Examples/RGB-D-Inertial/vslamlab_orbslam3_rgbd_vi.cpp)
 target_link_libraries(vslamlab_orbslam3_rgbd_vi PRIVATE ${PROJECT_NAME})
 
-# Install targets and headers
-install(TARGETS ${PROJECT_NAME} vslamlab_orbslam3_mono
+# Install the library and the executables (no headers: the conda package only provides the executables, and the
+# generic header names would clash with other packages in the environment)
+install(TARGETS ${PROJECT_NAME}
+        vslamlab_orbslam3_mono vslamlab_orbslam3_rgbd vslamlab_orbslam3_stereo
+        vslamlab_orbslam3_mono_vi vslamlab_orbslam3_rgbd_vi vslamlab_orbslam3_stereo_vi
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
-
-install(TARGETS ${PROJECT_NAME} vslamlab_orbslam3_rgbd
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-
-install(TARGETS ${PROJECT_NAME} vslamlab_orbslam3_stereo
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-
-install(TARGETS ${PROJECT_NAME} vslamlab_orbslam3_mono_vi
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-
-install(TARGETS ${PROJECT_NAME} vslamlab_orbslam3_stereo_vi
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-
-install(TARGETS ${PROJECT_NAME} vslamlab_orbslam3_rgbd_vi
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-
-install(DIRECTORY include/ DESTINATION include)

@@ -19,6 +19,10 @@
 
 
 #include "System.h"
+
+#include <chrono>
+#include <thread>
+
 #include "Converter.h"
 #include <thread>
 #include <pangolin/pangolin.h>
@@ -41,6 +45,8 @@ Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 System::System(const string &strVocFile, const string &strCalibrationFile, const string &strSettingsFile,
                const eSensor sensor, const bool bUseViewer, const int initFr, const string &strSequence):
                mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)),
+               mptLocalMapping(static_cast<std::thread*>(NULL)), mptLoopClosing(static_cast<std::thread*>(NULL)),
+               mptViewer(static_cast<std::thread*>(NULL)),
                mbReset(false), mbResetActiveMap(false), mbActivateLocalizationMode(false),
                mbDeactivateLocalizationMode(false), mbShutDown(false)
 {
@@ -231,7 +237,11 @@ System::System(const string &strVocFile, const string &strCalibrationFile, const
     //if(false) // TODO
     {
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strCalibrationFile, strSettingsFile, settings_);
+#ifdef __APPLE__
+        // Cocoa/AppKit requires Pangolin's event loop to run on the process main thread (RunViewer)
+#else
         mptViewer = new thread(&Viewer::Run, mpViewer);
+#endif
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
         mpViewer->both = mpFrameDrawer->both;
@@ -279,7 +289,7 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             mpTracker->InformOnlyTracking(true);
@@ -354,7 +364,7 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             mpTracker->InformOnlyTracking(true);
@@ -429,7 +439,7 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             mpTracker->InformOnlyTracking(true);
@@ -524,11 +534,13 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
+    if(mpViewer && !mptViewer)  // viewer on the main thread (macOS): let RunViewer() return
+        mpViewer->RequestFinish();
     /*if(mpViewer)
     {
         mpViewer->RequestFinish();
         while(!mpViewer->isFinished())
-            usleep(5000);
+            std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }*/
 
     // Wait until all thread have effectively stopped
@@ -565,6 +577,23 @@ void System::Shutdown()
 bool System::isShutDown() {
     unique_lock<mutex> lock(mMutexReset);
     return mbShutDown;
+}
+
+void System::RunViewer()
+{
+#ifdef __APPLE__
+    if(mpViewer)
+        mpViewer->Run();
+#endif
+}
+
+bool System::ViewerRunsOnMainThread() const
+{
+#ifdef __APPLE__
+    return mpViewer != NULL;
+#else
+    return false;
+#endif
 }
 
 void System::SaveKeyFrameTrajectoryVSLAMLAB(const string &filename)

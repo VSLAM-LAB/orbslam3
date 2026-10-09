@@ -27,11 +27,11 @@
 #ifndef G2O_OS_SPECIFIC_HH_
 #define G2O_OS_SPECIFIC_HH_
 
-#ifdef WINDOWS
+#if defined(WINDOWS) || defined(_WINDOWS) || defined(_WIN32) || defined(WIN32)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#ifndef _WINDOWS
+#if !defined(_WINDOWS) && !defined(_WIN32) && !defined(WIN32)
 #include <sys/time.h>
 #endif
 #define drand48() ((double) rand()/(double)RAND_MAX)
@@ -48,7 +48,7 @@ int vasprintf(char** strp, const char* fmt, va_list ap);
 
 #endif
 
-#ifdef UNIX
+#if defined(UNIX) && !defined(_WINDOWS) && !defined(_WIN32) && !defined(WIN32)
 #include <sys/time.h>
 // nothing to do on real operating systems
 #endif

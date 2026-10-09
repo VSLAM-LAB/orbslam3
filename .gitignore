@@ -95,3 +95,8 @@ borrar/*
 # VSLAM-LAB
 install_orbslam3.txt
 install_orbslam3-dev.txt
+# pixi
+.pixi/
+channel/
+output/
+bin/

@@ -26,7 +26,7 @@
 
 #include "os_specific.h"
 
-#ifdef WINDOWS
+#if defined(WINDOWS) || defined(_WINDOWS) || defined(_WIN32) || defined(WIN32)
 
 int vasprintf(char** strp, const char* fmt, va_list ap)
 {

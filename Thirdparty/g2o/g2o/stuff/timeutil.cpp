@@ -27,18 +27,18 @@
 #include "timeutil.h"
 #include <iostream>
 
-#ifdef _WINDOWS
+#if defined(_WINDOWS) || defined(_WIN32) || defined(WIN32)
 #include <time.h>
 #include <windows.h>
 #endif
 
-#ifdef UNIX
+#if defined(UNIX) && !defined(_WINDOWS) && !defined(_WIN32) && !defined(WIN32)
 #include <unistd.h>
 #endif
 
 namespace g2o {
 
-#ifdef _WINDOWS
+#if defined(_WINDOWS) || defined(_WIN32) || defined(WIN32)
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
   #define DELTA_EPOCH_IN_MICROSECS  11644473600000000Ui64
 #else
