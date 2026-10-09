@@ -45,9 +45,15 @@ target_compile_options(orbslam3_warnings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
 
-# Create shared library (MSVC: export all its symbols, the sources have no __declspec annotations)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-add_library(${PROJECT_NAME} SHARED
+# Create the library: shared, except on Windows. The sources have no __declspec annotations, and exporting every
+# symbol of a DLL exceeds the 65535-export limit (LNK1189: Eigen/g2o/boost template instances), so the Windows
+# executables link it statically
+if(WIN32)
+    set(ORBSLAM3_LIB_TYPE STATIC)
+else()
+    set(ORBSLAM3_LIB_TYPE SHARED)
+endif()
+add_library(${PROJECT_NAME} ${ORBSLAM3_LIB_TYPE}
         src/System.cc
         src/Tracking.cc
         src/LocalMapping.cc
@@ -126,9 +132,10 @@ target_link_libraries(vslamlab_orbslam3_rgbd_vi PRIVATE ${PROJECT_NAME})
 
 # Install the library and the executables (no headers: the conda package only provides the executables, and the
 # generic header names would clash with other packages in the environment)
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS
         vslamlab_orbslam3_mono vslamlab_orbslam3_rgbd vslamlab_orbslam3_stereo
         vslamlab_orbslam3_mono_vi vslamlab_orbslam3_rgbd_vi vslamlab_orbslam3_stereo_vi
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
+        RUNTIME DESTINATION bin)
+if(NOT WIN32)  # on Windows the static library is already linked into the executables
+    install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib)
+endif()
