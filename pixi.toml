@@ -14,11 +14,11 @@ preview = ["pixi-build"]
 #   pixi publish --clean --target-dir output
 #   pixi upload prefix --channel vslamlab/vslamlab output/*.conda
 # Builds libORB_SLAM3 (DBoW2 and g2o linked in statically, Sophus header-only) and the
-# vslamlab_orbslam3_{mono,rgbd,stereo,mono_vi,rgbd_vi,stereo_vi,mono_stream} executables.
+# vslamlab_orbslam3_{mono,rgbd,stereo,mono_vi,rgbd_vi,stereo_vi,mono_stream,rgbd_stream} executables.
 # ORBvoc.txt is not packaged: VSLAM-LAB downloads it (huggingface.co/vslamlab/orbslam2_vocabulary).
 [package]
 name = "orbslam3"
-version = "1.2"
+version = "1.3"
 description = "ORB-SLAM3: visual, visual-inertial and multi-map SLAM"
 authors = ["Carlos Campos", "Richard Elvira", "Juan J. Gomez Rodriguez", "J. M. M. Montiel", "Juan D. Tardos"]
 license = "GPL-3.0-only"
@@ -40,9 +40,10 @@ yaml-cpp = "*"
 pangolin-opengl = "*"
 libboost-devel = "*"    # boost::serialization (Atlas save/load)
 openssl = "*"           # MD5 of the vocabulary in saved atlases
-# ARStream C++ subscriber (header-only, github.com/VSLAM-LAB/arstream) for vslamlab_orbslam3_mono_stream, the online
-# entry point on an ARStream relay (VSLAM-LAB: `pixi run stream-iphone --run orbslam3`)
-libarstream = { version = "*", channel = "https://prefix.dev/vslamlab/vslamlab" }
+# ARStream C++ subscriber (header-only, github.com/VSLAM-LAB/arstream) for vslamlab_orbslam3_{mono,rgbd}_stream, the
+# online entry points on an ARStream relay (VSLAM-LAB: `pixi run stream-iphone --run orbslam3 [--mode rgbd]`);
+# 0.2 adds the LiDAR depth of the rgbd one
+libarstream = { version = ">=0.2", channel = "https://prefix.dev/vslamlab/vslamlab" }
 
 [package.host-dependencies."if(host_platform == 'linux-64')"]
 libgl-devel = "*"       # Pangolin's CMake config: find_package(OpenGL)
@@ -50,7 +51,7 @@ libopengl-devel = "*"
 
 [package.run-dependencies]
 pangolin-opengl = "*"
-libarstream = { version = "*", channel = "https://prefix.dev/vslamlab/vslamlab" }  # its run dependencies: zeromq
+libarstream = { version = ">=0.2", channel = "https://prefix.dev/vslamlab/vslamlab" }  # its run dependencies: zeromq
 
 ########################################################################################################################
 # Workspace: development environment. `pixi run install` compiles this repo in place (bin/, lib/) for the local CPU
@@ -66,9 +67,11 @@ execute-stereo = "./bin/vslamlab_orbslam3_stereo"
 execute-mono-vi = "./bin/vslamlab_orbslam3_mono_vi"
 execute-rgbd-vi = "./bin/vslamlab_orbslam3_rgbd_vi"
 execute-stereo-vi = "./bin/vslamlab_orbslam3_stereo_vi"
-# Online on an ARStream relay (VSLAM-LAB: `pixi run stream-iphone`), see Examples/Monocular/vslamlab_orbslam3_mono_stream.cpp
+# Online on an ARStream relay (VSLAM-LAB: `pixi run stream-iphone --run orbslam3-dev [--mode rgbd]`), see
+# Examples/Monocular/vslamlab_orbslam3_mono_stream.cpp and Examples/RGB-D/vslamlab_orbslam3_rgbd_stream.cpp
 execute-mono-stream = "./bin/vslamlab_orbslam3_mono_stream"
-test ="./bin/vslamlab_orbslam3_mono --help && ./bin/vslamlab_orbslam3_rgbd --help && ./bin/vslamlab_orbslam3_stereo --help && ./bin/vslamlab_orbslam3_mono_vi --help && ./bin/vslamlab_orbslam3_rgbd_vi --help && ./bin/vslamlab_orbslam3_stereo_vi --help && echo OK"
+execute-rgbd-stream = "./bin/vslamlab_orbslam3_rgbd_stream"
+test = "./bin/vslamlab_orbslam3_mono --help && ./bin/vslamlab_orbslam3_rgbd --help && ./bin/vslamlab_orbslam3_stereo --help && ./bin/vslamlab_orbslam3_mono_vi --help && ./bin/vslamlab_orbslam3_rgbd_vi --help && ./bin/vslamlab_orbslam3_stereo_vi --help && ./bin/vslamlab_orbslam3_mono_stream --help && ./bin/vslamlab_orbslam3_rgbd_stream --help && echo OK"
 
 [dev]
 orbslam3 = { path = "." }  # installs the [package] build/host/run dependencies, not orbslam3 itself

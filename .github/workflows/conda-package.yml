@@ -58,7 +58,7 @@ jobs:
         run: |
           for exe in vslamlab_orbslam3_mono vslamlab_orbslam3_rgbd vslamlab_orbslam3_stereo \
                      vslamlab_orbslam3_mono_vi vslamlab_orbslam3_rgbd_vi vslamlab_orbslam3_stereo_vi \
-                     vslamlab_orbslam3_mono_stream; do
+                     vslamlab_orbslam3_mono_stream vslamlab_orbslam3_rgbd_stream; do
             pixi exec -c "${{ github.workspace }}/channel" -c https://prefix.dev/conda-forge -c https://prefix.dev/vslamlab/vslamlab -s orbslam3 -- "$exe" --help
           done
 
