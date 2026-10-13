@@ -134,10 +134,12 @@ target_link_libraries(vslamlab_orbslam3_rgbd_vi PRIVATE ${PROJECT_NAME})
 # when the header-only subscriber is available, so the package builds without it
 find_package(arstream QUIET)
 if(arstream_FOUND)
-    message(STATUS "arstream found: building vslamlab_orbslam3_mono_stream")
+    message(STATUS "arstream found: building vslamlab_orbslam3_mono_stream and vslamlab_orbslam3_rgbd_stream")
     add_executable(vslamlab_orbslam3_mono_stream Examples/Monocular/vslamlab_orbslam3_mono_stream.cpp)
     target_link_libraries(vslamlab_orbslam3_mono_stream PRIVATE ${PROJECT_NAME} arstream::arstream)
-    install(TARGETS vslamlab_orbslam3_mono_stream RUNTIME DESTINATION bin)
+    add_executable(vslamlab_orbslam3_rgbd_stream Examples/RGB-D/vslamlab_orbslam3_rgbd_stream.cpp)
+    target_link_libraries(vslamlab_orbslam3_rgbd_stream PRIVATE ${PROJECT_NAME} arstream::arstream)
+    install(TARGETS vslamlab_orbslam3_mono_stream vslamlab_orbslam3_rgbd_stream RUNTIME DESTINATION bin)
 endif()
 
 # Install the library and the executables (no headers: the conda package only provides the executables, and the
