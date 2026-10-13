@@ -250,7 +250,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda
       - conda: https://prefix.dev/conda-forge/noarch/tzdata-2026c-h151e31d_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/wayland-protocols-1.49-hd8ed1ab_0.conda
-      - conda: https://prefix.dev/vslamlab/vslamlab/linux-64/libarstream-0.2.0-ha35fb5c_0.conda
+      - conda: https://prefix.dev/vslamlab/vslamlab/linux-64/libarstream-0.2.1-ha35fb5c_0.conda
       osx-arm64:
       - conda: https://prefix.dev/conda-forge/noarch/ca-certificates-2026.7.22-hbd8a1cb_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/compiler-rt23_osx-arm64-23.1.2-hb8825d9_0.conda
@@ -438,7 +438,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/osx-arm64/yaml-cpp-0.8.0-h784d473_1.conda
       - conda: https://prefix.dev/conda-forge/osx-arm64/zeromq-4.3.5-h6eb0046_12.conda
       - conda: https://prefix.dev/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
-      - conda: https://prefix.dev/vslamlab/vslamlab/osx-arm64/libarstream-0.2.0-hea27dcd_0.conda
+      - conda: https://prefix.dev/vslamlab/vslamlab/osx-arm64/libarstream-0.2.1-hea27dcd_0.conda
       win-64:
       - conda: https://prefix.dev/conda-forge/noarch/ca-certificates-2026.7.22-h4c7d964_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/font-ttf-dejavu-sans-mono-2.37-hab24e00_0.tar.bz2
@@ -586,7 +586,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/yaml-cpp-0.8.0-h5112557_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/zeromq-4.3.5-h3a581c9_12.conda
       - conda: https://prefix.dev/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda
-      - conda: https://prefix.dev/vslamlab/vslamlab/win-64/libarstream-0.2.0-h659f713_0.conda
+      - conda: https://prefix.dev/vslamlab/vslamlab/win-64/libarstream-0.2.1-h659f713_0.conda
 packages:
 - conda: https://prefix.dev/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
   build_number: 20
@@ -8950,9 +8950,9 @@ packages:
     - zstd >=1.5.7,<1.6.0a0
   size: 387535
   timestamp: 1786599623274
-- conda: https://prefix.dev/vslamlab/vslamlab/linux-64/libarstream-0.2.0-ha35fb5c_0.conda
-  sha256: f4cf0886ef87d0481796cb316e0f2465be6060b27e63ebcf33ca5ce74b229531
-  md5: 6a45bb05e3ef8467cd04d144afd380e8
+- conda: https://prefix.dev/vslamlab/vslamlab/linux-64/libarstream-0.2.1-ha35fb5c_0.conda
+  sha256: 994485f5b957de0e19785c49faf991029526a5f0771d22ef66fbb39a62b50fe0
+  md5: 9007240f83734d9c033ade469cc3f6ca
   depends:
   - cppzmq
   - zeromq
@@ -8964,11 +8964,11 @@ packages:
   - __glibc >=2.28,<3.0.a0
   license: GPL-3.0-only
   run_exports: {}
-  size: 60617
-  timestamp: 1791884750379
-- conda: https://prefix.dev/vslamlab/vslamlab/osx-arm64/libarstream-0.2.0-hea27dcd_0.conda
-  sha256: d897fd4298ad23b71075d18e7b901d08752883fb3e9783de036230916bfde8a4
-  md5: d224463c66c9962871abd72414329d3e
+  size: 60741
+  timestamp: 1791889479236
+- conda: https://prefix.dev/vslamlab/vslamlab/osx-arm64/libarstream-0.2.1-hea27dcd_0.conda
+  sha256: a16b7f18a49f9cbbca783e6f7429b4bade3055ed3ee79d428dfeaecc8a213f8d
+  md5: f1cfc151496f55e71ef18c9a6f072e99
   depends:
   - cppzmq
   - zeromq
@@ -8979,11 +8979,11 @@ packages:
   - __osx >=13.0
   license: GPL-3.0-only
   run_exports: {}
-  size: 48422
-  timestamp: 1791884757947
-- conda: https://prefix.dev/vslamlab/vslamlab/win-64/libarstream-0.2.0-h659f713_0.conda
-  sha256: 6c43a3b615d5534fc996ab44101c77db32823a2ff4ef5e0de66407a880a6667c
-  md5: db0f877d747b80046f6d67cb35034bec
+  size: 48519
+  timestamp: 1791889497078
+- conda: https://prefix.dev/vslamlab/vslamlab/win-64/libarstream-0.2.1-h659f713_0.conda
+  sha256: 903ddd8b9882462d1a49e945df7df3cee08bdeb53c95eaf53c51ee8b34a00ebd
+  md5: 0389c5f86b7b2246a5f6678131cf12ad
   depends:
   - cppzmq
   - zeromq
@@ -8995,5 +8995,5 @@ packages:
   - ucrt >=10.0.20348.0
   license: GPL-3.0-only
   run_exports: {}
-  size: 52512
-  timestamp: 1791884779195
+  size: 52648
+  timestamp: 1791889568687
